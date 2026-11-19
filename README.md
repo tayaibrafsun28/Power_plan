@@ -1,4 +1,4 @@
-# Who Stays On?
+# Power_plan
 
 A load-shedding roster planner. Given a day's outage schedule, a generator
 with limited capacity and a fixed diesel budget, it decides which shops are
