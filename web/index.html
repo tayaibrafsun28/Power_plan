@@ -64,20 +64,44 @@
   ul.reasons li { margin-bottom: 3px; }
   .legend { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
   [hidden] { display: none !important; }
+  .printonly { display: none; }
+  #printhead { font-size: 1.2rem; font-weight: 700; margin: 0 0 8px; }
+
+  @page { size: A4 landscape; margin: 12mm; }
+  @media print {
+    :root { --bg: #ffffff; --panel: #ffffff; --ink: #000000; --muted: #333333; --line: #777777;
+            --on: #0d5c3a; --on-bg: #e3f4ea; --off: #9c1c15; --off-bg: #f9e0de;
+            --grid-bg: #ececec; --diesel: #8a5200; --diesel-bg: #fbeed5; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; font-size: 11px; }
+    main { max-width: none; padding: 0; }
+    .noprint { display: none !important; }
+    .printonly { display: block; }
+    .panel { border: 0; padding: 0; margin-bottom: 8px; break-inside: avoid; }
+    .summary { gap: 24px; }
+    .stat b { font-size: 1.3rem; }
+    .scroll { overflow: visible; }
+    table { min-width: 0; width: 100%; }
+    th, td { padding: 4px 5px; border-color: var(--line); }
+    td.off button { padding: 4px 5px; }
+    .legend { margin-top: 6px; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>Power_plan</h1>
-  <p class="sub">Load a day's outage schedule and get a roster: which shops run on the generator each hour, how much diesel it burns, and why every dark shop is dark.</p>
+  <h1 class="noprint">Power_plan</h1>
+  <p id="printhead" class="printonly"></p>
+  <p class="sub noprint">Load a day's outage schedule and get a roster: which shops run on the generator each hour, how much diesel it burns, and why every dark shop is dark.</p>
 
-  <section class="panel" aria-label="Input">
+  <section class="panel noprint" aria-label="Input">
     <div class="bar">
       <input type="file" id="file" accept=".json,application/json">
       <label class="filebtn" for="file">Load input file</label>
       <button id="sample" type="button">Use sample input</button>
       <button id="run" type="button" class="primary">Make roster</button>
       <button id="download" type="button" hidden>Download output JSON</button>
+      <button id="print" type="button" hidden>Print board</button>
     </div>
     <details>
       <summary>Paste or edit input JSON</summary>
@@ -98,15 +122,15 @@
     <section class="panel" aria-label="Roster board">
       <h2>Roster board</h2>
       <div class="scroll"><table id="board"></table></div>
-      <p class="legend">★ mandatory shop, always on in an outage. ✓ powered, ✗ dark (select a ✗ to see why). Hatched cells: grid is on, nothing to decide.</p>
+      <p class="legend">★ mandatory shop, always on in an outage. ✓ powered, ✗ dark<span class="noprint"> (select a ✗ to see why)</span>. Hatched cells: grid is on, nothing to decide.</p>
     </section>
 
-    <section class="panel" aria-live="polite" aria-label="Reason">
+    <section class="panel noprint" aria-live="polite" aria-label="Reason">
       <h2>Why is it dark?</h2>
       <div id="why">Select a ✗ on the board.</div>
     </section>
 
-    <section class="panel" aria-label="All reasons">
+    <section class="panel noprint" aria-label="All reasons">
       <details>
         <summary>All reasons by hour</summary>
         <div id="all"></div>
@@ -156,14 +180,14 @@
     catch (e) { showMessage("The input is not valid JSON. Load a file or paste the JSON first."); return; }
 
     $("run").disabled = true; $("run").textContent = "Solving…";
-    $("message").hidden = true; $("result").hidden = true; $("download").hidden = true;
+    $("message").hidden = true; $("result").hidden = true; $("download").hidden = true; $("print").hidden = true;
 
     fetch("/api/roster", { method: "POST", headers: { "Content-Type": "application/json" }, body: raw })
       .then(function (r) { return r.json(); })
       .then(function (out) {
         if (out.status === "invalid_input") { showMessage("Invalid input: " + out.message); }
         else if (out.status === "infeasible") { showMessage("No roster satisfies every rule. " + out.reason); }
-        else { lastOutput = out; render(input, out); $("download").hidden = false; }
+        else { lastOutput = out; render(input, out); $("download").hidden = false; $("print").hidden = false; }
       })
       .catch(function () { showMessage("Could not reach the server. Is app.py running?"); })
       .then(function () { $("run").disabled = false; $("run").textContent = "Make roster"; });
@@ -174,6 +198,8 @@
     var byHour = {};
     out.roster.forEach(function (row) { byHour[parseInt(row.hour, 10) - 10] = row; });
 
+    var when = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    $("printhead").textContent = "Generator roster, printed " + when;
     $("s-status").textContent = out.status;
     $("s-value").textContent = out.value_total;
     $("s-fuel").textContent = litres(out.fuel_total_litres) + " / " + litres(budget) + " L";
@@ -265,6 +291,7 @@
   $("sample").addEventListener("click", useSample);
   $("run").addEventListener("click", run);
   $("download").addEventListener("click", download);
+  $("print").addEventListener("click", function () { window.print(); });
 })();
 </script>
 </body>
