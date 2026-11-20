@@ -4,7 +4,7 @@ import copy
 import json
 import unittest
 
-from solver import InvalidInput, evaluate, fuel_cost, optimize, outage_hours, validate
+from solver import InvalidInput, evaluate, explain, fuel_cost, optimize, outage_hours, validate
 
 with open("sample_input.json") as f:
     SAMPLE = json.load(f)
@@ -302,6 +302,50 @@ class OptimizeTests(unittest.TestCase):
                 self.assertEqual(result["status"], "ok", f"case {case}")
                 self.assertEqual(result["value"], expected, f"case {case}")
                 self.assertEqual(evaluate(data, result["roster"])["violations"], [], f"case {case}")
+
+
+class ExplainTests(unittest.TestCase):
+    def test_capacity_reason_with_numbers(self):
+        # 12:00 in the worked example: 9 kW on, the tailor (4 kW) would make 13 kW > 10 kW
+        why = explain(SMALL, BEST_SMALL)[2]["tailor"]
+        self.assertEqual(why["kind"], "capacity")
+        self.assertIn("13 kW", why["reason"])
+        self.assertIn("10 kW", why["reason"])
+
+    def test_fuel_reason_with_numbers(self):
+        # 14:00: 4 kW on (0.80 L). The tailor fits (8 kW) but costs 1.60 L -> day 8.80 L > 8.00 L
+        why = explain(SMALL, BEST_SMALL)[4]["tailor"]
+        self.assertEqual(why["kind"], "fuel")
+        self.assertIn("8.80 L", why["reason"])
+        self.assertIn("8.00 L", why["reason"])
+
+    def test_powered_shops_get_no_reason(self):
+        reasons = explain(SMALL, BEST_SMALL)
+        self.assertNotIn("pharmacy", reasons[2])
+        self.assertEqual(set(reasons[2]), {"tailor"})
+
+    def test_every_dark_shop_in_real_sample_has_a_reason(self):
+        roster = optimize(SAMPLE)["roster"]
+        reasons = explain(SAMPLE, roster)
+        dark_cells = sum(len(SAMPLE["shops"]) - len(on) for on in roster.values())
+        self.assertEqual(sum(len(r) for r in reasons.values()), dark_cells)
+        for hour in reasons.values():
+            for item in hour.values():
+                self.assertTrue(item["reason"])
+
+    def test_no_value_reason_only_for_worthless_slots(self):
+        # If this fails, the optimizer left value on the table.
+        rng = random.Random(7)
+        for case in range(150):
+            data = random_input(rng)
+            result = optimize(data)
+            if result["status"] != "ok":
+                continue
+            shops = {s["id"]: s for s in data["shops"]}
+            for h, hour in explain(data, result["roster"]).items():
+                for sid, item in hour.items():
+                    if item["kind"] == "no_value":
+                        self.assertEqual(shops[sid]["value_per_slot"][h], 0, f"case {case}")
 
 
 if __name__ == "__main__":

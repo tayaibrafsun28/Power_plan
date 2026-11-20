@@ -323,3 +323,59 @@ def optimize(data):
     roster = dict(sorted(roster.items()))
     return {"status": "ok", "roster": roster, "value": best_value,
             "fuel_hundredths": best_key[1]}
+
+
+# -------------------------------------------------------- explanations
+
+def explain(data, roster):
+    """Say why each dark shop is dark, with numbers.
+
+    For every dark shop in every outage hour we test one thing: what would
+    happen if ONLY that shop were switched on, keeping the rest of the roster?
+        capacity -> the combined load would pass the generator limit
+        fuel     -> the load fits, but the day's diesel would go over budget
+        no_value -> nothing breaks, so the shop must be worth 0 that hour
+                    (otherwise the optimizer would have switched it on)
+
+    This explains why a shop cannot simply be added to the final plan. It does
+    not explain why this plan beat every other plan.
+
+    Returns {hour: {shop_id: {"kind": ..., "reason": text}}}.
+    """
+    capacity = data["generator_capacity_kw"]
+    table = data["fuel_table"]
+    budget = to_hundredths(data["fuel_budget_litres"], "fuel_budget_litres")
+    shops = {s["id"]: s for s in data["shops"]}
+
+    load_at = {h: sum(shops[i]["kw"] for i in on) for h, on in roster.items()}
+    fuel_at = {h: fuel_cost(load_at[h], table) for h in roster}
+    day_fuel = sum(fuel_at.values())
+
+    result = {}
+    for h, on in roster.items():
+        clock = f"{10 + h}:00"
+        load = load_at[h]
+        result[h] = {}
+        for sid, shop in shops.items():
+            if sid in on:
+                continue
+            new_load = load + shop["kw"]
+            if new_load > capacity:
+                kind = "capacity"
+                reason = (f"Capacity: {sid} needs {shop['kw']} kW; the {load} kW already on at "
+                          f"{clock} would become {new_load} kW, above the generator's {capacity} kW.")
+            else:
+                new_hour_fuel = fuel_cost(new_load, table)
+                new_day_fuel = day_fuel - fuel_at[h] + new_hour_fuel
+                if new_day_fuel > budget:
+                    kind = "fuel"
+                    reason = (f"Fuel: switching on {sid} ({shop['kw']} kW) lifts {clock} from "
+                              f"{load} kW / {fuel_at[h] / 100:.2f} L to {new_load} kW / "
+                              f"{new_hour_fuel / 100:.2f} L, taking the day to "
+                              f"{new_day_fuel / 100:.2f} L against a {budget / 100:.2f} L budget.")
+                else:
+                    kind = "no_value"
+                    reason = (f"No gain: {sid} is worth {shop['value_per_slot'][h]} at {clock}, "
+                              f"so powering it would not improve the plan.")
+            result[h][sid] = {"kind": kind, "reason": reason}
+    return result
