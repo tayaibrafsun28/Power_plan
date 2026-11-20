@@ -94,6 +94,14 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(out["value_total"], 0)
         self.assertEqual(out["fuel_total_litres"], 0)
 
+    def test_screen_and_sample_are_served(self):
+        with urllib.request.urlopen(self.url + "/") as page:
+            self.assertEqual(page.status, 200)
+            self.assertIn("text/html", page.headers["Content-Type"])
+            self.assertIn("Power_plan", page.read().decode())
+        code, sample = self.call("/sample", method="GET")
+        self.assertEqual((code, sample), (200, SAMPLE))
+
     def test_wrong_path_and_wrong_method(self):
         self.assertEqual(self.call("/nope", body={}, method="POST")[0], 404)
         self.assertEqual(self.call("/api/roster", method="GET")[0], 405)

@@ -1,5 +1,7 @@
 """Power_plan web server.  Start it with:  python app.py
 
+GET  /             the roster screen (web/index.html)
+GET  /sample       the sample input, for the "Use sample input" button
 POST /api/roster   body = input JSON, response = output JSON
                    HTTP 200 for "ok" and "infeasible", 400 for "invalid_input"
 """
@@ -13,6 +15,11 @@ from solver import solve
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8000"))
 MAX_BODY = 1_000_000          # bytes
+BASE = os.path.dirname(os.path.abspath(__file__))
+FILES = {                      # the only files the server will hand out
+    "/": ("web/index.html", "text/html"),
+    "/sample": ("sample_input.json", "application/json"),
+}
 
 
 def _reject_constant(name):
@@ -34,9 +41,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/roster":
             self._send(405, {"message": "use POST for /api/roster"})
-        elif self.path == "/":
-            self._send(200, b"Power_plan is running. POST an input JSON to /api/roster.",
-                       "text/plain")
+        elif self.path in FILES:
+            name, content_type = FILES[self.path]
+            try:
+                with open(os.path.join(BASE, name), "rb") as f:
+                    self._send(200, f.read(), content_type)
+            except OSError:
+                self._send(404, {"message": f"{name} is missing"})
         else:
             self._send(404, {"message": "not found"})
 

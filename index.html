@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power_plan: who stays on</title>
+<style>
+  :root {
+    --bg: #eef1f4; --panel: #ffffff; --ink: #1b2430; --muted: #5c6877; --line: #d3dae2;
+    --on: #17794f; --on-bg: #dff3e8; --off: #b3261e; --off-bg: #fbe3e1;
+    --grid-bg: #e3e7ec; --diesel: #b86e00; --diesel-bg: #fbeed5; --focus: #1d5fd1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12171d; --panel: #1b222b; --ink: #e6ebf1; --muted: #98a4b3; --line: #2f3945;
+      --on: #5fd19b; --on-bg: #17382a; --off: #ff8a80; --off-bg: #43211f;
+      --grid-bg: #262e38; --diesel: #f2a93b; --diesel-bg: #3a2c12; --focus: #7aa7ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.45;
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 1.7rem; letter-spacing: -0.01em; }
+  h2 { margin: 0 0 8px; font-size: 1.05rem; }
+  .sub { margin: 0 0 20px; color: var(--muted); max-width: 62ch; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, .filebtn { font: inherit; padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px;
+                     background: var(--panel); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600; }
+  button:disabled { opacity: .55; cursor: progress; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  input[type=file]:focus-visible + .filebtn { outline: 3px solid var(--focus); outline-offset: 2px; }
+  details > summary { cursor: pointer; margin-top: 12px; color: var(--muted); }
+  textarea { width: 100%; min-height: 160px; margin-top: 8px; padding: 8px; font: 13px/1.4 ui-monospace, Consolas, monospace;
+             background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; }
+  .msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--off); background: var(--off-bg); }
+  .msg.info { border-color: var(--line); background: var(--panel); }
+  .summary { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; }
+  .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: .85rem; }
+  .fuel { flex: 1 1 260px; }
+  .fuelbar { height: 12px; background: var(--diesel-bg); border: 1px solid var(--diesel); border-radius: 6px; overflow: hidden; margin-top: 6px; }
+  .fuelbar i { display: block; height: 100%; background: var(--diesel); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; font-variant-numeric: tabular-nums; }
+  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
+  thead th { background: var(--bg); font-weight: 600; }
+  th.name, td.name { text-align: left; font-weight: 600; }
+  td.grid { background: var(--grid-bg); color: var(--muted); font-size: .8rem;
+            background-image: repeating-linear-gradient(135deg, transparent 0 5px, rgba(128,140,155,.18) 5px 6px); }
+  td.on { background: var(--on-bg); color: var(--on); font-weight: 700; }
+  td.off { background: var(--off-bg); padding: 0; }
+  td.off button { width: 100%; border: 0; background: transparent; color: var(--off); font-weight: 700; padding: 6px 8px; }
+  td.off button[aria-pressed=true] { outline: 3px solid var(--off); outline-offset: -3px; }
+  tfoot th { text-align: left; background: var(--bg); }
+  tfoot td { color: var(--ink); }
+  tfoot tr.fuelrow td, tfoot tr.fuelrow th { color: var(--diesel); }
+  #why { min-height: 3.2em; }
+  #why strong { display: block; margin-bottom: 2px; }
+  ul.reasons { margin: 6px 0 0; padding-left: 18px; }
+  ul.reasons li { margin-bottom: 3px; }
+  .legend { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Power_plan</h1>
+  <p class="sub">Load a day's outage schedule and get a roster: which shops run on the generator each hour, how much diesel it burns, and why every dark shop is dark.</p>
+
+  <section class="panel" aria-label="Input">
+    <div class="bar">
+      <input type="file" id="file" accept=".json,application/json">
+      <label class="filebtn" for="file">Load input file</label>
+      <button id="sample" type="button">Use sample input</button>
+      <button id="run" type="button" class="primary">Make roster</button>
+      <button id="download" type="button" hidden>Download output JSON</button>
+    </div>
+    <details>
+      <summary>Paste or edit input JSON</summary>
+      <textarea id="text" spellcheck="false" aria-label="Input JSON"></textarea>
+    </details>
+  </section>
+
+  <div id="message" role="alert" hidden></div>
+
+  <div id="result" hidden>
+    <section class="panel summary" aria-label="Summary">
+      <div class="stat"><b id="s-status"></b><span>status</span></div>
+      <div class="stat"><b id="s-value"></b><span>total value served</span></div>
+      <div class="stat fuel"><b id="s-fuel"></b><span>diesel used against the day's budget</span>
+        <div class="fuelbar"><i id="s-bar"></i></div></div>
+    </section>
+
+    <section class="panel" aria-label="Roster board">
+      <h2>Roster board</h2>
+      <div class="scroll"><table id="board"></table></div>
+      <p class="legend">★ mandatory shop, always on in an outage. ✓ powered, ✗ dark (select a ✗ to see why). Hatched cells: grid is on, nothing to decide.</p>
+    </section>
+
+    <section class="panel" aria-live="polite" aria-label="Reason">
+      <h2>Why is it dark?</h2>
+      <div id="why">Select a ✗ on the board.</div>
+    </section>
+
+    <section class="panel" aria-label="All reasons">
+      <details>
+        <summary>All reasons by hour</summary>
+        <div id="all"></div>
+      </details>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var lastOutput = null;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function label(id) { return id.replace(/_/g, " "); }
+  function litres(n) { return n.toFixed(2); }
+
+  function showMessage(text, info) {
+    var box = $("message");
+    box.textContent = text;
+    box.className = "msg" + (info ? " info" : "");
+    box.hidden = false;
+  }
+
+  function loadFile(file) {
+    var reader = new FileReader();
+    reader.onload = function () { $("text").value = reader.result; showMessage("Loaded " + file.name + ". Press Make roster.", true); };
+    reader.readAsText(file);
+  }
+
+  function useSample() {
+    fetch("/sample").then(function (r) { return r.text(); }).then(function (t) {
+      $("text").value = t;
+      showMessage("Sample input loaded. Press Make roster.", true);
+    }).catch(function () { showMessage("Could not load the sample input."); });
+  }
+
+  function run() {
+    var raw = $("text").value;
+    var input;
+    try { input = JSON.parse(raw); }
+    catch (e) { showMessage("The input is not valid JSON. Load a file or paste the JSON first."); return; }
+
+    $("run").disabled = true; $("run").textContent = "Solving…";
+    $("message").hidden = true; $("result").hidden = true; $("download").hidden = true;
+
+    fetch("/api/roster", { method: "POST", headers: { "Content-Type": "application/json" }, body: raw })
+      .then(function (r) { return r.json(); })
+      .then(function (out) {
+        if (out.status === "invalid_input") { showMessage("Invalid input: " + out.message); }
+        else if (out.status === "infeasible") { showMessage("No roster satisfies every rule. " + out.reason); }
+        else { lastOutput = out; render(input, out); $("download").hidden = false; }
+      })
+      .catch(function () { showMessage("Could not reach the server. Is app.py running?"); })
+      .then(function () { $("run").disabled = false; $("run").textContent = "Make roster"; });
+  }
+
+  function render(input, out) {
+    var budget = input.fuel_budget_litres;
+    var byHour = {};
+    out.roster.forEach(function (row) { byHour[parseInt(row.hour, 10) - 10] = row; });
+
+    $("s-status").textContent = out.status;
+    $("s-value").textContent = out.value_total;
+    $("s-fuel").textContent = litres(out.fuel_total_litres) + " / " + litres(budget) + " L";
+    $("s-bar").style.width = Math.min(100, out.fuel_total_litres / budget * 100) + "%";
+
+    var table = $("board");
+    table.textContent = "";
+    var head = el("thead"), hr = el("tr");
+    hr.appendChild(el("th", "name", "Shop"));
+    for (var h = 0; h < 10; h++) hr.appendChild(el("th", "", (10 + h) + ":00"));
+    hr.appendChild(el("th", "", "Dark hours"));
+    head.appendChild(hr); table.appendChild(head);
+
+    var body = el("tbody");
+    input.shops.forEach(function (shop) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "name", label(shop.id) + (shop.type === "mandatory" ? " ★" : "")));
+      for (var h = 0; h < 10; h++) {
+        var row = byHour[h];
+        if (!row) { tr.appendChild(el("td", "grid", "grid")); continue; }
+        var dark = row.dark.filter(function (d) { return d.id === shop.id; })[0];
+        if (!dark) { tr.appendChild(el("td", "on", "✓")); continue; }
+        var td = el("td", "off"), btn = el("button", "", "✗");
+        btn.type = "button";
+        btn.title = dark.reason;
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", label(shop.id) + " dark at " + row.hour + ". Show reason");
+        btn.addEventListener("click", pick.bind(null, btn, shop, row.hour, dark.reason));
+        td.appendChild(btn); tr.appendChild(td);
+      }
+      tr.appendChild(el("td", "", String(out.dark_hours[shop.id])));
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+
+    var foot = el("tfoot");
+    var loadRow = el("tr"), fuelRow = el("tr", "fuelrow"), totalRow = el("tr", "fuelrow");
+    loadRow.appendChild(el("th", "", "Load / capacity (kW)"));
+    fuelRow.appendChild(el("th", "", "Fuel this hour (L)"));
+    totalRow.appendChild(el("th", "", "Running total / budget (L)"));
+    var running = 0;
+    for (var k = 0; k < 10; k++) {
+      var r = byHour[k];
+      if (!r) { [loadRow, fuelRow, totalRow].forEach(function (x) { x.appendChild(el("td", "grid", "-")); }); continue; }
+      running += r.fuel_litres;
+      loadRow.appendChild(el("td", "", r.load_kw + " / " + input.generator_capacity_kw));
+      fuelRow.appendChild(el("td", "", litres(r.fuel_litres)));
+      totalRow.appendChild(el("td", "", litres(running) + " / " + litres(budget)));
+    }
+    [loadRow, fuelRow, totalRow].forEach(function (x) { x.appendChild(el("td", "", "")); foot.appendChild(x); });
+    table.appendChild(foot);
+
+    $("why").textContent = "Select a ✗ on the board.";
+    var all = $("all");
+    all.textContent = "";
+    out.roster.forEach(function (row) {
+      all.appendChild(el("h2", "", row.hour));
+      var ul = el("ul", "reasons");
+      row.dark.forEach(function (d) {
+        var li = el("li");
+        li.appendChild(el("strong", "", label(d.id) + ": "));
+        li.appendChild(document.createTextNode(d.reason));
+        ul.appendChild(li);
+      });
+      if (!row.dark.length) ul.appendChild(el("li", "", "Everyone is powered."));
+      all.appendChild(ul);
+    });
+    $("result").hidden = false;
+  }
+
+  function pick(btn, shop, hour, reason) {
+    Array.prototype.forEach.call(document.querySelectorAll("td.off button"), function (b) { b.setAttribute("aria-pressed", "false"); });
+    btn.setAttribute("aria-pressed", "true");
+    var why = $("why");
+    why.textContent = "";
+    why.appendChild(el("strong", "", label(shop.id) + " at " + hour));
+    why.appendChild(document.createTextNode(reason));
+  }
+
+  function download() {
+    var blob = new Blob([JSON.stringify(lastOutput, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "roster.json";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  $("file").addEventListener("change", function (e) { if (e.target.files[0]) loadFile(e.target.files[0]); });
+  $("sample").addEventListener("click", useSample);
+  $("run").addEventListener("click", run);
+  $("download").addEventListener("click", download);
+})();
+</script>
+</body>
+</html>
