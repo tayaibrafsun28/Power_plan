@@ -100,3 +100,86 @@ def _validate_shops(shops):
             raise InvalidInput(f"{where}.value_per_slot: must be a list of {HOURS} numbers")
         if not all(_is_whole(v) and v >= 0 for v in values):
             raise InvalidInput(f"{where}.value_per_slot: every value must be a whole number, 0 or more")
+
+
+# ---------------------------------------------------------------- fuel
+
+def fuel_cost(load_kw, fuel_table):
+    """Litres (in hundredths) burned in one hour at this combined load.
+
+    Finds the first level that is at least the load. Zero load costs nothing.
+    """
+    if load_kw == 0:
+        return 0
+    for level in fuel_table:
+        if level["load_kw"] >= load_kw:
+            return to_hundredths(level["litres_per_hour"], "litres_per_hour")
+    raise ValueError(f"load of {load_kw} kW is above the generator capacity")
+
+
+def outage_hours(data):
+    """Indexes (0-9) of the hours when the grid is off."""
+    return [h for h, on in enumerate(data["grid_available"]) if not on]
+
+
+# ------------------------------------------------------- rule checker
+
+def evaluate(data, powered):
+    """Score a roster and list every rule it breaks.
+
+    powered: {hour_index: [shop ids switched on]} for the outage hours.
+    Returns {"value", "fuel_hundredths", "dark_hours", "violations"}.
+    """
+    shops = {s["id"]: s for s in data["shops"]}
+    outages = outage_hours(data)
+    budget = to_hundredths(data["fuel_budget_litres"], "fuel_budget_litres")
+    max_dark = data["max_consecutive_dark"]
+    violations = []
+    value = 0
+    fuel = 0
+    on_at = {}                      # hour -> set of shop ids that are on
+
+    for h in outages:
+        if h not in powered:
+            violations.append(f"hour {h}: no decision given")
+            on_at[h] = set()
+            continue
+        ids = list(powered[h])
+        unknown = [i for i in ids if i not in shops]
+        if unknown:
+            violations.append(f"hour {h}: unknown shop ids {unknown}")
+        if len(set(ids)) != len(ids):
+            violations.append(f"hour {h}: a shop is listed twice")
+        on = {i for i in ids if i in shops}
+        on_at[h] = on
+
+        load = sum(shops[i]["kw"] for i in on)
+        if load > data["generator_capacity_kw"]:
+            violations.append(
+                f"capacity: hour {h} load {load} kW is above {data['generator_capacity_kw']} kW")
+        else:
+            fuel += fuel_cost(load, data["fuel_table"])
+        value += sum(shops[i]["value_per_slot"][h] for i in on)
+
+    if fuel > budget:
+        violations.append(f"fuel: {fuel / 100:.2f} L used, budget is {budget / 100:.2f} L")
+
+    dark_hours = {sid: 0 for sid in shops}
+    for sid, shop in shops.items():
+        run = 0
+        for h in range(HOURS):
+            if h not in on_at:              # grid hour: everyone on, run resets
+                run = 0
+            elif sid in on_at[h]:
+                run = 0
+            else:
+                run += 1
+                dark_hours[sid] += 1
+                if shop["type"] == "mandatory":
+                    violations.append(f"mandatory: {sid} is dark in hour {h}")
+                elif run == max_dark + 1:
+                    violations.append(
+                        f"dark run: {sid} is dark more than {max_dark} hours in a row (ending hour {h})")
+
+    return {"value": value, "fuel_hundredths": fuel,
+            "dark_hours": dark_hours, "violations": violations}
