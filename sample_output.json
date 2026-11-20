@@ -1,0 +1,297 @@
+{
+  "status": "ok",
+  "roster": [
+    {
+      "hour": "12:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "tailor_jamal",
+        "photocopy",
+        "tea_stall",
+        "clothing"
+      ],
+      "dark": [
+        {
+          "id": "mobile_shop",
+          "reason": "Fuel: switching on mobile_shop (3 kW) lifts 12:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "beauty_salon",
+          "reason": "Fuel: switching on beauty_salon (4 kW) lifts 12:00 from 14 kW / 2.00 L to 18 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "grocery_fridge",
+          "reason": "Fuel: switching on grocery_fridge (3 kW) lifts 12:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "electronics",
+          "reason": "Fuel: switching on electronics (5 kW) lifts 12:00 from 14 kW / 2.00 L to 19 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "restaurant",
+          "reason": "Fuel: switching on restaurant (6 kW) lifts 12:00 from 14 kW / 2.00 L to 20 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "jewellery",
+          "reason": "Fuel: switching on jewellery (3 kW) lifts 12:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        }
+      ],
+      "load_kw": 14,
+      "fuel_litres": 2.0
+    },
+    {
+      "hour": "13:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "mobile_shop",
+        "grocery_fridge",
+        "restaurant",
+        "jewellery"
+      ],
+      "dark": [
+        {
+          "id": "tailor_jamal",
+          "reason": "Capacity: tailor_jamal needs 4 kW; the 20 kW already on at 13:00 would become 24 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "photocopy",
+          "reason": "Capacity: photocopy needs 2 kW; the 20 kW already on at 13:00 would become 22 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "tea_stall",
+          "reason": "Capacity: tea_stall needs 1 kW; the 20 kW already on at 13:00 would become 21 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "beauty_salon",
+          "reason": "Capacity: beauty_salon needs 4 kW; the 20 kW already on at 13:00 would become 24 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "electronics",
+          "reason": "Capacity: electronics needs 5 kW; the 20 kW already on at 13:00 would become 25 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "clothing",
+          "reason": "Capacity: clothing needs 2 kW; the 20 kW already on at 13:00 would become 22 kW, above the generator's 20 kW."
+        }
+      ],
+      "load_kw": 20,
+      "fuel_litres": 2.8
+    },
+    {
+      "hour": "14:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "beauty_salon",
+        "electronics"
+      ],
+      "dark": [
+        {
+          "id": "tailor_jamal",
+          "reason": "Fuel: switching on tailor_jamal (4 kW) lifts 14:00 from 14 kW / 2.00 L to 18 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "mobile_shop",
+          "reason": "Fuel: switching on mobile_shop (3 kW) lifts 14:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "photocopy",
+          "reason": "Fuel: switching on photocopy (2 kW) lifts 14:00 from 14 kW / 2.00 L to 16 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "tea_stall",
+          "reason": "Fuel: switching on tea_stall (1 kW) lifts 14:00 from 14 kW / 2.00 L to 15 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "grocery_fridge",
+          "reason": "Fuel: switching on grocery_fridge (3 kW) lifts 14:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "restaurant",
+          "reason": "Fuel: switching on restaurant (6 kW) lifts 14:00 from 14 kW / 2.00 L to 20 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "jewellery",
+          "reason": "Fuel: switching on jewellery (3 kW) lifts 14:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "clothing",
+          "reason": "Fuel: switching on clothing (2 kW) lifts 14:00 from 14 kW / 2.00 L to 16 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        }
+      ],
+      "load_kw": 14,
+      "fuel_litres": 2.0
+    },
+    {
+      "hour": "15:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "tailor_jamal",
+        "photocopy",
+        "tea_stall",
+        "clothing"
+      ],
+      "dark": [
+        {
+          "id": "mobile_shop",
+          "reason": "Fuel: switching on mobile_shop (3 kW) lifts 15:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "beauty_salon",
+          "reason": "Fuel: switching on beauty_salon (4 kW) lifts 15:00 from 14 kW / 2.00 L to 18 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "grocery_fridge",
+          "reason": "Fuel: switching on grocery_fridge (3 kW) lifts 15:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "electronics",
+          "reason": "Fuel: switching on electronics (5 kW) lifts 15:00 from 14 kW / 2.00 L to 19 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "restaurant",
+          "reason": "Fuel: switching on restaurant (6 kW) lifts 15:00 from 14 kW / 2.00 L to 20 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "jewellery",
+          "reason": "Fuel: switching on jewellery (3 kW) lifts 15:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        }
+      ],
+      "load_kw": 14,
+      "fuel_litres": 2.0
+    },
+    {
+      "hour": "17:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "photocopy",
+        "tea_stall",
+        "beauty_salon",
+        "grocery_fridge",
+        "jewellery",
+        "clothing"
+      ],
+      "dark": [
+        {
+          "id": "tailor_jamal",
+          "reason": "Capacity: tailor_jamal needs 4 kW; the 20 kW already on at 17:00 would become 24 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "mobile_shop",
+          "reason": "Capacity: mobile_shop needs 3 kW; the 20 kW already on at 17:00 would become 23 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "electronics",
+          "reason": "Capacity: electronics needs 5 kW; the 20 kW already on at 17:00 would become 25 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "restaurant",
+          "reason": "Capacity: restaurant needs 6 kW; the 20 kW already on at 17:00 would become 26 kW, above the generator's 20 kW."
+        }
+      ],
+      "load_kw": 20,
+      "fuel_litres": 2.8
+    },
+    {
+      "hour": "18:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "tailor_jamal",
+        "mobile_shop",
+        "tea_stall",
+        "electronics",
+        "clothing"
+      ],
+      "dark": [
+        {
+          "id": "photocopy",
+          "reason": "Capacity: photocopy needs 2 kW; the 20 kW already on at 18:00 would become 22 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "beauty_salon",
+          "reason": "Capacity: beauty_salon needs 4 kW; the 20 kW already on at 18:00 would become 24 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "grocery_fridge",
+          "reason": "Capacity: grocery_fridge needs 3 kW; the 20 kW already on at 18:00 would become 23 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "restaurant",
+          "reason": "Capacity: restaurant needs 6 kW; the 20 kW already on at 18:00 would become 26 kW, above the generator's 20 kW."
+        },
+        {
+          "id": "jewellery",
+          "reason": "Capacity: jewellery needs 3 kW; the 20 kW already on at 18:00 would become 23 kW, above the generator's 20 kW."
+        }
+      ],
+      "load_kw": 20,
+      "fuel_litres": 2.8
+    },
+    {
+      "hour": "19:00",
+      "powered": [
+        "pharmacy",
+        "atm_booth",
+        "mobile_shop",
+        "restaurant"
+      ],
+      "dark": [
+        {
+          "id": "tailor_jamal",
+          "reason": "Fuel: switching on tailor_jamal (4 kW) lifts 19:00 from 14 kW / 2.00 L to 18 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "photocopy",
+          "reason": "Fuel: switching on photocopy (2 kW) lifts 19:00 from 14 kW / 2.00 L to 16 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "tea_stall",
+          "reason": "Fuel: switching on tea_stall (1 kW) lifts 19:00 from 14 kW / 2.00 L to 15 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "beauty_salon",
+          "reason": "Fuel: switching on beauty_salon (4 kW) lifts 19:00 from 14 kW / 2.00 L to 18 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "grocery_fridge",
+          "reason": "Fuel: switching on grocery_fridge (3 kW) lifts 19:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "electronics",
+          "reason": "Fuel: switching on electronics (5 kW) lifts 19:00 from 14 kW / 2.00 L to 19 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "jewellery",
+          "reason": "Fuel: switching on jewellery (3 kW) lifts 19:00 from 14 kW / 2.00 L to 17 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        },
+        {
+          "id": "clothing",
+          "reason": "Fuel: switching on clothing (2 kW) lifts 19:00 from 14 kW / 2.00 L to 16 kW / 2.80 L, taking the day to 17.20 L against a 17.00 L budget."
+        }
+      ],
+      "load_kw": 14,
+      "fuel_litres": 2.0
+    }
+  ],
+  "value_total": 186,
+  "fuel_total_litres": 16.4,
+  "dark_hours": {
+    "pharmacy": 0,
+    "atm_booth": 0,
+    "tailor_jamal": 4,
+    "mobile_shop": 4,
+    "photocopy": 4,
+    "tea_stall": 3,
+    "beauty_salon": 5,
+    "grocery_fridge": 5,
+    "electronics": 5,
+    "restaurant": 5,
+    "jewellery": 5,
+    "clothing": 3
+  }
+}

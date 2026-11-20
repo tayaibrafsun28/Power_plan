@@ -379,3 +379,43 @@ def explain(data, roster):
                               f"so powering it would not improve the plan.")
             result[h][sid] = {"kind": kind, "reason": reason}
     return result
+
+
+# ----------------------------------------------------------- response
+
+def solve(data):
+    """Run everything and build the response a market gets back.
+
+    status is "ok", "infeasible" or "invalid_input".
+    """
+    try:
+        result = optimize(data)
+    except InvalidInput as err:
+        return {"status": "invalid_input", "message": str(err)}
+    if result["status"] != "ok":
+        return {"status": "infeasible", "reason": result["reason"]}
+
+    roster = result["roster"]
+    check = evaluate(data, roster)          # totals are recomputed, not trusted
+    reasons = explain(data, roster)
+    order = [s["id"] for s in data["shops"]]
+    kw = {s["id"]: s["kw"] for s in data["shops"]}
+
+    rows = []
+    for h in sorted(roster):
+        on = set(roster[h])
+        load = sum(kw[i] for i in on)
+        rows.append({
+            "hour": f"{10 + h}:00",
+            "powered": [i for i in order if i in on],
+            "dark": [{"id": i, "reason": reasons[h][i]["reason"]} for i in order if i not in on],
+            "load_kw": load,
+            "fuel_litres": fuel_cost(load, data["fuel_table"]) / 100,
+        })
+    return {
+        "status": "ok",
+        "roster": rows,
+        "value_total": check["value"],
+        "fuel_total_litres": check["fuel_hundredths"] / 100,
+        "dark_hours": check["dark_hours"],
+    }
