@@ -183,3 +183,143 @@ def evaluate(data, powered):
 
     return {"value": value, "fuel_hundredths": fuel,
             "dark_hours": dark_hours, "violations": violations}
+
+
+# ---------------------------------------------------------- optimizer
+
+def optimize(data):
+    """Find the roster with the highest total value that breaks no rule.
+
+    Plans the whole day at once with dynamic programming. After each hour
+    the plan is summed up as a "state":
+        (how long each normal shop has been dark in a row, litres used so far)
+    and we keep the best value reached for every state.
+
+    Returns {"status": "ok", "roster", "value", "fuel_hundredths"}
+    or      {"status": "infeasible", "reason"}.
+    """
+    validate(data)
+    shops = data["shops"]
+    mandatory = [s for s in shops if s["type"] == "mandatory"]
+    normal = [s for s in shops if s["type"] == "normal"]
+    capacity = data["generator_capacity_kw"]
+    table = data["fuel_table"]
+    budget = to_hundredths(data["fuel_budget_litres"], "fuel_budget_litres")
+    max_dark = data["max_consecutive_dark"]
+    outages = outage_hours(data)
+    n = len(normal)
+
+    mandatory_ids = [s["id"] for s in mandatory]
+    mandatory_kw = sum(s["kw"] for s in mandatory)
+
+    if not outages:
+        return {"status": "ok", "roster": {}, "value": 0, "fuel_hundredths": 0}
+
+    # Quick infeasibility checks on the mandatory shops alone.
+    if mandatory_kw > capacity:
+        return {"status": "infeasible", "reason":
+                f"capacity: mandatory shops {mandatory_ids} need {mandatory_kw} kW "
+                f"but the generator carries {capacity} kW"}
+    mandatory_fuel = fuel_cost(mandatory_kw, table)
+    if mandatory_fuel * len(outages) > budget:
+        return {"status": "infeasible", "reason":
+                f"fuel: mandatory shops {mandatory_ids} alone need "
+                f"{mandatory_fuel * len(outages) / 100:.2f} L over {len(outages)} outage hours "
+                f"but the budget is {budget / 100:.2f} L"}
+
+    # Precompute, for every subset ("mask") of normal shops, its kW.
+    kw_of = [0] * (1 << n)
+    for mask in range(1, 1 << n):
+        low = (mask & -mask).bit_length() - 1
+        kw_of[mask] = kw_of[mask & (mask - 1)] + normal[low]["kw"]
+    room = capacity - mandatory_kw
+    masks = [m for m in range(1 << n) if kw_of[m] <= room]
+    fuel_of = {kw: fuel_cost(mandatory_kw + kw, table) for kw in set(kw_of[m] for m in masks)}
+
+    # value of each mask in each outage hour
+    def mask_value(mask, hour):
+        return sum(normal[i]["value_per_slot"][hour] for i in range(n) if mask >> i & 1)
+
+    base_value = {h: sum(s["value_per_slot"][h] for s in mandatory) for h in outages}
+
+    # states: runs tuple -> {fuel: value};  history[h][(runs, fuel)] = (prev_runs, prev_fuel, mask)
+    zero = (0,) * n
+    states = {zero: {0: 0}}
+    history = {}
+    min_fuel_left = {}
+    left = 0
+    for h in reversed(range(HOURS)):
+        min_fuel_left[h] = left            # cheapest possible fuel for hours after h
+        if h in outages:
+            left += mandatory_fuel
+
+    for h in range(HOURS):
+        new_states = {}
+        back = {}
+        if h not in outages:                # grid hour: everyone on, runs reset
+            for runs, by_fuel in states.items():
+                for fuel, value in by_fuel.items():
+                    slot = new_states.setdefault(zero, {})
+                    if value > slot.get(fuel, -1):
+                        slot[fuel] = value
+                        back[(zero, fuel)] = (runs, fuel, None)
+        else:
+            value_of = {m: base_value[h] + mask_value(m, h) for m in masks}
+            for runs, by_fuel in states.items():
+                must = 0
+                for i in range(n):
+                    if runs[i] >= max_dark:
+                        must |= 1 << i
+                for mask in masks:
+                    if mask & must != must:
+                        continue
+                    cost = fuel_of[kw_of[mask]]
+                    new_runs = tuple(0 if mask >> i & 1 else runs[i] + 1 for i in range(n))
+                    slot = new_states.setdefault(new_runs, {})
+                    for fuel, value in by_fuel.items():
+                        new_fuel = fuel + cost
+                        if new_fuel + min_fuel_left[h] > budget:
+                            continue
+                        new_value = value + value_of[mask]
+                        if new_value > slot.get(new_fuel, -1):
+                            slot[new_fuel] = new_value
+                            back[(new_runs, new_fuel)] = (runs, fuel, mask)
+
+        # Keep only states that are not beaten by one with the same runs,
+        # less (or equal) fuel and at least as much value.
+        pruned = {}
+        for runs, by_fuel in new_states.items():
+            best = -1
+            keep = {}
+            for fuel in sorted(by_fuel):
+                if by_fuel[fuel] > best:
+                    best = by_fuel[fuel]
+                    keep[fuel] = best
+            if keep:
+                pruned[runs] = keep
+        states = pruned
+        history[h] = back
+        if not states:
+            return {"status": "infeasible", "reason":
+                    f"no roster satisfies capacity ({capacity} kW), fuel ({budget / 100:.2f} L), "
+                    f"mandatory shops and the {max_dark}-hour dark limit together "
+                    f"(stuck at {10 + h}:00)"}
+
+    # Best final state: highest value, then least fuel.
+    best_key, best_value = None, -1
+    for runs, by_fuel in states.items():
+        for fuel, value in by_fuel.items():
+            if value > best_value or (value == best_value and fuel < best_key[1]):
+                best_key, best_value = (runs, fuel), value
+
+    # Walk back to rebuild the roster.
+    roster = {}
+    key = best_key
+    for h in reversed(range(HOURS)):
+        prev_runs, prev_fuel, mask = history[h][key]
+        if mask is not None:
+            roster[h] = mandatory_ids + [normal[i]["id"] for i in range(n) if mask >> i & 1]
+        key = (prev_runs, prev_fuel)
+    roster = dict(sorted(roster.items()))
+    return {"status": "ok", "roster": roster, "value": best_value,
+            "fuel_hundredths": best_key[1]}

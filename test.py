@@ -1,8 +1,10 @@
+import itertools
+import random
 import copy
 import json
 import unittest
 
-from solver import InvalidInput, evaluate, fuel_cost, outage_hours, validate
+from solver import InvalidInput, evaluate, fuel_cost, optimize, outage_hours, validate
 
 with open("sample_input.json") as f:
     SAMPLE = json.load(f)
@@ -204,6 +206,102 @@ class EvaluateTests(unittest.TestCase):
         roster[4] = ["pharmacy", "ghost"]
         result = evaluate(SMALL, roster)
         self.assertTrue(any("unknown" in v for v in result["violations"]))
+
+
+def brute_force(data):
+    """Try every possible roster. Slow, only for tiny inputs. Returns best value or None."""
+    ids = [s["id"] for s in data["shops"]]
+    subsets = [[i for k, i in enumerate(ids) if mask >> k & 1] for mask in range(1 << len(ids))]
+    outages = outage_hours(data)
+    best = None
+    for combo in itertools.product(subsets, repeat=len(outages)):
+        roster = dict(zip(outages, combo))
+        result = evaluate(data, roster)
+        if not result["violations"] and (best is None or result["value"] > best):
+            best = result["value"]
+    return best
+
+
+def random_input(rng):
+    capacity = rng.randint(4, 8)
+    levels = sorted(rng.sample(range(1, capacity), rng.randint(0, 2))) + [capacity]
+    litres = 0
+    table = []
+    for kw in levels:
+        litres += rng.randint(50, 150)
+        table.append({"load_kw": kw, "litres_per_hour": litres / 100})
+    shops = []
+    for k in range(rng.randint(2, 4)):
+        shops.append({
+            "id": f"s{k}", "kw": rng.randint(1, 4),
+            "type": "mandatory" if rng.random() < 0.25 else "normal",
+            "value_per_slot": [rng.randint(0, 9) for _ in range(10)]})
+    grid = [True] * 10
+    for h in rng.sample(range(10), rng.randint(0, 3)):
+        grid[h] = False
+    return {"grid_available": grid, "generator_capacity_kw": capacity,
+            "fuel_budget_litres": rng.randint(100, 600) / 100, "fuel_table": table,
+            "max_consecutive_dark": rng.randint(0, 2), "shops": shops}
+
+
+class OptimizeTests(unittest.TestCase):
+    def test_worked_example_best_is_84_and_8_litres(self):
+        result = optimize(SMALL)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["value"], 84)
+        self.assertEqual(result["fuel_hundredths"], 800)
+        self.assertEqual(evaluate(SMALL, result["roster"])["violations"], [])
+
+    def test_real_sample_has_no_violations(self):
+        result = optimize(SAMPLE)
+        self.assertEqual(result["status"], "ok")
+        check = evaluate(SAMPLE, result["roster"])
+        self.assertEqual(check["violations"], [])
+        self.assertEqual(check["value"], result["value"])
+        self.assertEqual(check["fuel_hundredths"], result["fuel_hundredths"])
+        self.assertLessEqual(result["fuel_hundredths"], 1700)
+
+    def test_no_outage_gives_empty_roster(self):
+        data = broken(lambda d: d.update(grid_available=[True] * 10))
+        result = optimize(data)
+        self.assertEqual(result, {"status": "ok", "roster": {}, "value": 0, "fuel_hundredths": 0})
+
+    def test_no_shops(self):
+        result = optimize(broken(lambda d: d.update(shops=[])))
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["value"], 0)
+
+    def test_mandatory_shops_too_big_for_generator(self):
+        data = broken(lambda d: d["shops"][0].update(kw=19))      # 19 + 2 > 20 kW
+        result = optimize(data)
+        self.assertEqual(result["status"], "infeasible")
+        self.assertIn("capacity", result["reason"])
+
+    def test_mandatory_shops_need_more_fuel_than_budget(self):
+        data = broken(lambda d: d.update(fuel_budget_litres=5.0))   # 7 hours x 1.20 L = 8.40 L
+        result = optimize(data)
+        self.assertEqual(result["status"], "infeasible")
+        self.assertIn("fuel", result["reason"])
+
+    def test_dark_limit_cannot_be_met(self):
+        # a normal shop too big for the generator can never be on, but 4 outage hours
+        # in a row would leave it dark for more than 2 hours
+        data = broken(lambda d: d["shops"][2].update(kw=19))
+        result = optimize(data)
+        self.assertEqual(result["status"], "infeasible")
+
+    def test_matches_brute_force_on_random_inputs(self):
+        rng = random.Random(2026)
+        for case in range(150):
+            data = random_input(rng)
+            expected = brute_force(data)
+            result = optimize(data)
+            if expected is None:
+                self.assertEqual(result["status"], "infeasible", f"case {case}")
+            else:
+                self.assertEqual(result["status"], "ok", f"case {case}")
+                self.assertEqual(result["value"], expected, f"case {case}")
+                self.assertEqual(evaluate(data, result["roster"])["violations"], [], f"case {case}")
 
 
 if __name__ == "__main__":
